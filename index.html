@@ -545,31 +545,55 @@
   .empty-state{color:var(--steel-dim); font-size:0.9rem; font-style:italic;}
 
   /* ============ FOUNDER ============ */
-  .founder-card{
-    display:grid;
-    grid-template-columns:200px 1fr;
-    gap:36px;
-    align-items:center;
-    background:var(--card);
-    border:1px solid var(--line);
-    padding:36px;
-    border-radius:var(--radius);
-  }
-  .founder-photo{
-    width:200px; height:200px;
-    background:var(--bg-alt);
-    border:1px dashed var(--line);
-    display:flex; align-items:center; justify-content:center;
-    color:var(--steel-dim);
-    font-size:0.8rem;
-    text-align:center;
-    border-radius:var(--radius);
-  }
-  .founder-card h3{font-size:1.3rem; margin-bottom:6px;}
-  .founder-role{color:var(--orange-bright); font-size:0.85rem; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:14px;}
-  .founder-card p{color:var(--steel); font-size:0.92rem;}
-  @media (max-width:700px){.founder-card{grid-template-columns:1fr; text-align:center;} .founder-photo{margin:0 auto;}}
+.founder-card{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  text-align:center;
+  background:var(--card);
+  border:1px solid var(--line);
+  padding:40px 36px;
+  border-radius:var(--radius);
+}
+.founder-photo{
+  width:100px; height:100px;
+  background:var(--bg-alt);
+  border:1px dashed var(--line);
+  display:inline-flex; align-items:center; justify-content:center;
+  color:var(--steel-dim);
+  font-size:0.8rem;
+  text-align:center;
+  border-radius:50%;
+  margin-bottom:20px;
+}
+.founder-card .founder-info{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  width:100%;
+  max-width:none;
+}
+.founder-photo img{width:100%; height:100%; object-fit:cover; border-radius:100%;}
 
+.founder-card h3{font-size:1.3rem; margin-bottom:6px;}
+.founder-role{
+  color:var(--orange-bright);
+  font-size:0.85rem;
+  text-transform:uppercase;
+  letter-spacing:0.06em;
+  margin-bottom:32px;
+}
+.founder-card p{
+  color:var(--steel);
+  font-size:0.92rem;
+  text-align:left;
+  margin-bottom:16px;
+}
+.founder-card p:last-child{margin-bottom:0;}
+
+@media (max-width:700px){
+  .founder-card{padding:32px 24px;}
+}
   .team-grid{
     display:grid;
     grid-template-columns:repeat(2, 1fr);
@@ -595,6 +619,7 @@
     font-size:0.7rem;
     border-radius:50%;
   }
+  .team-photo img{width:100%; height:100%; object-fit:cover; border-radius:50%;}
   .team-card h4{font-size:1rem; margin-bottom:4px;}
   .team-role{color:var(--orange-bright); font-size:0.8rem; text-transform:uppercase; letter-spacing:0.05em;}
   @media (max-width:600px){.team-grid{grid-template-columns:1fr;}}
@@ -970,25 +995,25 @@
       <h2>The Team</h2>
     </div>
     <div class="founder-card">
-      <div class="founder-photo">Founder photo goes here</div>
-      <div>
-        <h3>John Bright</h3>
-        <div class="founder-role">Founder &amp; Director, 50TEN Engineering Ltd</div>
-        <p>John Bright founded 50TEN Engineering to fill a gap he kept running into on site: too many plants lose time waiting on E&amp;I work that should have been straightforward. The company was incorporated in Nigeria in June 2026 under the Companies and Allied Matters Act, with a scope covering electrical, instrumentation, automation, mechanical, and industrial engineering services. That range is deliberate, it means one call covers installation, testing, commissioning, and the maintenance work that follows, instead of juggling separate contractors for each stage.</p>
-        <p>The Academy grew out of the same instinct. John saw graduates leaving engineering school with theory but no field exposure, and built a training track to close that gap directly.</p>
-      </div>
-    </div>
+  <div class="founder-photo"><img src="images/CEO.png" alt=""></div>
+  <div class="founder-info">
+    <h3>John Bright</h3>
+    <div class="founder-role">Founder &amp; Director, 50TEN Engineering Ltd</div>
+    <p>John Bright founded 50TEN Engineering to fill a gap he kept running into on site: too many plants lose time waiting on E&amp;I work that should have been straightforward. The company was incorporated in Nigeria in June 2026 under the Companies and Allied Matters Act, with a scope covering electrical, instrumentation, automation, mechanical, and industrial engineering services. That range is deliberate, it means one call covers installation, testing, commissioning, and the maintenance work that follows, instead of juggling separate contractors for each stage.</p>
+    <p>The Academy grew out of the same instinct. John saw graduates leaving engineering school with theory but no field exposure, and built a training track to close that gap directly.</p>
+  </div>
+</div>
 
     <div class="team-grid">
       <div class="team-card">
-        <div class="team-photo">Photo</div>
+        <div class="team-photo"><img src="images/Zilpah Idaa.jpg" alt=""></div>
         <h4>Zilpah Idaa</h4>
-        <div class="team-role">Role to be confirmed</div>
+        <div class="team-role">Team Member</div>
       </div>
       <div class="team-card">
-        <div class="team-photo">Photo</div>
-        <h4>Gideon</h4>
-        <div class="team-role">Role to be confirmed</div>
+        <div class="team-photo"><img src="images/Gideon.png" alt=""></div>
+        <h4>Gideon Gideon</h4>
+        <div class="team-role">Team Member</div>
       </div>
     </div>
   </div>
