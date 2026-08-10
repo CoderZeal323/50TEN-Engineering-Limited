@@ -118,7 +118,7 @@
   .dash-header{
     display:flex;
     justify-content:space-between;
-    align-items:center;
+    align-items:flex-start;
     margin-bottom:36px;
     padding-bottom:20px;
     border-bottom:1px solid var(--line);
@@ -127,6 +127,46 @@
   }
   .dash-header h1{font-size:1.3rem; text-transform:uppercase; letter-spacing:0.03em;}
   .dash-header .sub{color:var(--steel-dim); font-size:0.85rem; margin-top:4px;}
+
+  /* DP / avatar */
+  .avatar-row{display:flex; align-items:center; gap:14px; margin-top:14px;}
+  .avatar-circle{
+    width:52px; height:52px;
+    border-radius:50%;
+    overflow:hidden;
+    background:var(--bg-alt);
+    border:1px solid var(--line);
+    display:flex; align-items:center; justify-content:center;
+    flex-shrink:0;
+    color:var(--steel-dim);
+    font-size:0.7rem;
+    text-transform:uppercase;
+    letter-spacing:0.04em;
+  }
+  .avatar-circle img{width:100%; height:100%; object-fit:cover; display:none;}
+  .avatar-controls{display:flex; flex-direction:column; gap:4px;}
+  .avatar-controls .lbl{
+    font-size:0.72rem;
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+    color:var(--steel-dim);
+  }
+  input[type=file]{
+    font-size:0.82rem;
+    color:var(--steel);
+    max-width:240px;
+  }
+  .cover-preview{
+    margin-top:10px;
+    max-width:260px;
+    max-height:150px;
+    width:auto;
+    height:auto;
+    border-radius:var(--radius);
+    border:1px solid var(--line);
+    display:none;
+    object-fit:cover;
+  }
 
   .panel{
     background:var(--card);
@@ -212,6 +252,18 @@
       <div>
         <h1>Blog Admin</h1>
         <div class="sub" id="whoami"></div>
+
+        <div class="avatar-row">
+          <div class="avatar-circle" id="avatarCircle">
+            <img id="dpPreview" src="" alt="">
+            <span id="dpInitial"></span>
+          </div>
+          <div class="avatar-controls">
+            <label class="lbl" for="dpInput">Profile Picture</label>
+            <input type="file" id="dpInput" accept="image/*">
+            <div class="msg" id="dpMsg"></div>
+          </div>
+        </div>
       </div>
       <button class="btn btn-outline" id="logoutBtn">Log Out</button>
     </div>
@@ -236,8 +288,14 @@
           <textarea id="pContent" rows="8" required></textarea>
         </div>
         <div class="field">
-          <label for="pCover">Cover image URL (optional)</label>
-          <input type="url" id="pCover" placeholder="https://...">
+          <label for="pCover">Cover image URL</label>
+          <input type="url" id="pCover" placeholder="https://... (or upload a file below)">
+        </div>
+        <div class="field">
+          <label for="pCoverFile">Upload a cover image</label>
+          <input type="file" id="pCoverFile" accept="image/*">
+          <div class="msg" id="coverMsg"></div>
+          <img id="pCoverPreview" class="cover-preview" src="" alt="">
         </div>
         <div class="field-check">
           <input type="checkbox" id="pPublished" checked>
@@ -263,6 +321,9 @@
   const SUPABASE_ANON_KEY = "sb_publishable_0CDTZ_sHTBkNfXLCUedB7A_qtx34OBo";
   const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+  const AVATAR_BUCKET = 'avatars';
+  const BLOG_IMAGE_BUCKET = 'blog-images';
+
   const loginScreen = document.getElementById('loginScreen');
   const setPasswordScreen = document.getElementById('setPasswordScreen');
   const dashboard = document.getElementById('dashboard');
@@ -273,6 +334,15 @@
   const setPasswordForm = document.getElementById('setPasswordForm');
   const setPasswordBtn = document.getElementById('setPasswordBtn');
   const setPasswordMsg = document.getElementById('setPasswordMsg');
+
+  const dpInput = document.getElementById('dpInput');
+  const dpPreview = document.getElementById('dpPreview');
+  const dpInitial = document.getElementById('dpInitial');
+  const dpMsg = document.getElementById('dpMsg');
+
+  const pCoverFile = document.getElementById('pCoverFile');
+  const pCoverPreview = document.getElementById('pCoverPreview');
+  const coverMsg = document.getElementById('coverMsg');
 
   let editingId = null;
 
@@ -301,13 +371,112 @@
     }
   }
 
+  function renderAvatar(user){
+    const avatarUrl = user && user.user_metadata ? user.user_metadata.avatar_url : null;
+    if(avatarUrl){
+      dpPreview.src = avatarUrl;
+      dpPreview.style.display = 'block';
+      dpInitial.style.display = 'none';
+    }else{
+      dpPreview.style.display = 'none';
+      dpInitial.style.display = 'block';
+      const email = user && user.email ? user.email : '';
+      dpInitial.textContent = email ? email.charAt(0).toUpperCase() : '?';
+    }
+  }
+
   function showDashboard(session){
     loginScreen.style.display = 'none';
     setPasswordScreen.style.display = 'none';
     dashboard.style.display = 'block';
     whoami.textContent = `Logged in as ${session.user.email}`;
+    renderAvatar(session.user);
     loadPosts();
   }
+
+  // ===== Profile picture (DP) upload =====
+  dpInput.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if(!file) return;
+
+    const { data: { session } } = await sb.auth.getSession();
+    if(!session){ dpMsg.textContent = 'You must be logged in.'; dpMsg.className = 'msg error'; return; }
+
+    dpMsg.textContent = 'Uploading...';
+    dpMsg.className = 'msg';
+
+    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+    const path = `${session.user.id}/dp.${ext}`;
+
+    const { error: upErr } = await sb.storage
+      .from(AVATAR_BUCKET)
+      .upload(path, file, { upsert: true, cacheControl: '3600' });
+
+    if(upErr){
+      dpMsg.textContent = 'Upload failed. Check the "avatars" storage bucket exists and is public.';
+      dpMsg.className = 'msg error';
+      return;
+    }
+
+    const { data: pub } = sb.storage.from(AVATAR_BUCKET).getPublicUrl(path);
+    const bustUrl = `${pub.publicUrl}?t=${Date.now()}`;
+
+    const { data: updated, error: updErr } = await sb.auth.updateUser({
+      data: { avatar_url: bustUrl }
+    });
+
+    if(updErr){
+      dpMsg.textContent = 'Image uploaded but profile update failed.';
+      dpMsg.className = 'msg error';
+      return;
+    }
+
+    dpMsg.textContent = 'Profile picture updated.';
+    dpMsg.className = 'msg';
+    renderAvatar(updated.user);
+    dpInput.value = '';
+  });
+
+  // ===== Blog cover image upload =====
+  pCoverFile.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if(!file) return;
+
+    coverMsg.textContent = 'Uploading...';
+    coverMsg.className = 'msg';
+
+    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+    const path = `${Date.now()}-${Math.random().toString(36).slice(2,8)}.${ext}`;
+
+    const { error: upErr } = await sb.storage
+      .from(BLOG_IMAGE_BUCKET)
+      .upload(path, file, { cacheControl: '3600' });
+
+    if(upErr){
+      coverMsg.textContent = 'Upload failed. Check the "blog-images" storage bucket exists and is public.';
+      coverMsg.className = 'msg error';
+      return;
+    }
+
+    const { data: pub } = sb.storage.from(BLOG_IMAGE_BUCKET).getPublicUrl(path);
+
+    document.getElementById('pCover').value = pub.publicUrl;
+    pCoverPreview.src = pub.publicUrl;
+    pCoverPreview.style.display = 'block';
+    coverMsg.textContent = 'Image uploaded — URL filled in above.';
+    coverMsg.className = 'msg';
+    pCoverFile.value = '';
+  });
+
+  document.getElementById('pCover').addEventListener('input', (e) => {
+    const url = e.target.value.trim();
+    if(url){
+      pCoverPreview.src = url;
+      pCoverPreview.style.display = 'block';
+    }else{
+      pCoverPreview.style.display = 'none';
+    }
+  });
 
   setPasswordForm.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -429,6 +598,15 @@
     document.getElementById('pCover').value = post.cover_image || '';
     document.getElementById('pPublished').checked = post.published;
     document.getElementById('cancelEditBtn').style.display = 'inline-block';
+
+    if(post.cover_image){
+      pCoverPreview.src = post.cover_image;
+      pCoverPreview.style.display = 'block';
+    }else{
+      pCoverPreview.style.display = 'none';
+    }
+    coverMsg.textContent = '';
+
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
@@ -438,6 +616,8 @@
     document.getElementById('pPublished').checked = true;
     document.getElementById('formTitle').textContent = 'New Post';
     document.getElementById('cancelEditBtn').style.display = 'none';
+    pCoverPreview.style.display = 'none';
+    coverMsg.textContent = '';
   });
 
   document.getElementById('postForm').addEventListener('submit', async (e) => {
@@ -480,6 +660,8 @@
     editingId = null;
     document.getElementById('formTitle').textContent = 'New Post';
     document.getElementById('cancelEditBtn').style.display = 'none';
+    pCoverPreview.style.display = 'none';
+    coverMsg.textContent = '';
     loadPosts();
   });
 
