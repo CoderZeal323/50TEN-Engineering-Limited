@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>50TEN Engineering | Admin</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  :root{
+    --bg:#121212;
+    --bg-alt:#181818;
+    --card:#1d1d1d;
+    --steel:#c3c7ce;
+    --steel-dim:#8b9096;
+    --orange:#f2790a;
+    --orange-bright:#ff9a2e;
+    --red:#c81e1e;
+    --white:#ffffff;
+    --line:#2c2c2c;
+    --radius:2px;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--white);
+    font-family:'Inter', system-ui, sans-serif;
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+    -moz-osx-font-smoothing:grayscale;
+    min-height:100vh;
+  }
+  h1,h2,h3{font-family:'Plus Jakarta Sans', sans-serif; font-weight:700; color:var(--white);}
+  a{color:inherit;}
+
+  .wrap{max-width:920px; margin:0 auto; padding:40px 24px 80px;}
+
+  /* Login screen */
+  .login-screen{
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:24px;
+  }
+  .login-box{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-top:3px solid var(--orange);
+    padding:40px;
+    width:100%;
+    max-width:380px;
+    border-radius:var(--radius);
+  }
+  .login-box h1{font-size:1.2rem; text-transform:uppercase; letter-spacing:0.04em; margin-bottom:6px;}
+  .login-box .sub{color:var(--steel-dim); font-size:0.85rem; margin-bottom:26px;}
+  .field{margin-bottom:16px;}
+  .field label{
+    display:block;
+    font-size:0.75rem;
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+    color:var(--steel-dim);
+    margin-bottom:8px;
+  }
+  .field input, .field textarea{
+    width:100%;
+    background:var(--bg);
+    border:1px solid var(--line);
+    color:var(--white);
+    padding:12px 14px;
+    font-family:'Inter', sans-serif;
+    font-size:0.92rem;
+    border-radius:var(--radius);
+    resize:vertical;
+  }
+  .field input:focus, .field textarea:focus{outline:none; border-color:var(--orange);}
+  .field-check{display:flex; align-items:center; gap:10px; margin-bottom:20px;}
+  .field-check input{width:auto;}
+  .field-check label{margin:0; text-transform:none; letter-spacing:normal; font-size:0.9rem; color:var(--white);}
+
+  .btn{
+    width:100%;
+    background:linear-gradient(100deg, var(--orange), var(--red));
+    color:var(--white);
+    border:none;
+    padding:13px;
+    font-weight:600;
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+    font-size:0.85rem;
+    border-radius:var(--radius);
+    cursor:pointer;
+  }
+  .btn:disabled{opacity:0.5; cursor:not-allowed;}
+  .btn-outline{
+    background:none;
+    border:1px solid var(--line);
+    color:var(--white);
+    width:auto;
+    padding:9px 18px;
+  }
+  .btn-outline:hover{border-color:var(--orange-bright); color:var(--orange-bright);}
+  .btn-danger{
+    background:none;
+    border:1px solid var(--red);
+    color:#ff8383;
+    width:auto;
+    padding:9px 16px;
+    font-size:0.78rem;
+  }
+  .msg{font-size:0.85rem; margin-top:12px; color:var(--orange-bright);}
+  .msg.error{color:#ff6b6b;}
+
+  /* Dashboard */
+  .dashboard{display:none;}
+  .dash-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:36px;
+    padding-bottom:20px;
+    border-bottom:1px solid var(--line);
+    flex-wrap:wrap;
+    gap:16px;
+  }
+  .dash-header h1{font-size:1.3rem; text-transform:uppercase; letter-spacing:0.03em;}
+  .dash-header .sub{color:var(--steel-dim); font-size:0.85rem; margin-top:4px;}
+
+  .panel{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:30px;
+    margin-bottom:32px;
+  }
+  .panel h2{font-size:1rem; text-transform:uppercase; letter-spacing:0.04em; margin-bottom:20px;}
+
+  .post-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:16px 0;
+    border-bottom:1px solid var(--line);
+    gap:16px;
+    flex-wrap:wrap;
+  }
+  .post-row:last-child{border-bottom:none;}
+  .post-row .title{font-weight:600; font-size:0.95rem;}
+  .post-row .meta{color:var(--steel-dim); font-size:0.78rem; margin-top:4px;}
+  .status-pill{
+    font-size:0.72rem;
+    text-transform:uppercase;
+    letter-spacing:0.05em;
+    padding:3px 10px;
+    border-radius:100px;
+    border:1px solid var(--line);
+  }
+  .status-pill.live{color:var(--orange-bright); border-color:var(--orange);}
+  .row-actions{display:flex; gap:8px;}
+
+  .empty-state{color:var(--steel-dim); font-size:0.9rem; font-style:italic; padding:20px 0;}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-screen" id="loginScreen">
+  <div class="login-box">
+    <h1>50TEN Admin</h1>
+    <div class="sub">Log in to manage blog posts.</div>
+    <form id="loginForm">
+      <div class="field">
+        <label for="loginEmail">Email</label>
+        <input type="email" id="loginEmail" required>
+      </div>
+      <div class="field">
+        <label for="loginPassword">Password</label>
+        <input type="password" id="loginPassword" required>
+      </div>
+      <button type="submit" class="btn" id="loginBtn">Log In</button>
+      <div class="msg" id="loginMsg"></div>
+    </form>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div class="dashboard" id="dashboard">
+  <div class="wrap">
+    <div class="dash-header">
+      <div>
+        <h1>Blog Admin</h1>
+        <div class="sub" id="whoami"></div>
+      </div>
+      <button class="btn btn-outline" id="logoutBtn">Log Out</button>
+    </div>
+
+    <div class="panel">
+      <h2 id="formTitle">New Post</h2>
+      <form id="postForm">
+        <div class="field">
+          <label for="pTitle">Title</label>
+          <input type="text" id="pTitle" required>
+        </div>
+        <div class="field">
+          <label for="pSlug">Slug (used in the post's share link)</label>
+          <input type="text" id="pSlug" placeholder="e.g. first-cohort-graduates" required>
+        </div>
+        <div class="field">
+          <label for="pExcerpt">Excerpt (shown on the blog card)</label>
+          <textarea id="pExcerpt" rows="2"></textarea>
+        </div>
+        <div class="field">
+          <label for="pContent">Content</label>
+          <textarea id="pContent" rows="8" required></textarea>
+        </div>
+        <div class="field">
+          <label for="pCover">Cover image URL (optional)</label>
+          <input type="url" id="pCover" placeholder="https://...">
+        </div>
+        <div class="field-check">
+          <input type="checkbox" id="pPublished" checked>
+          <label for="pPublished">Published (visible on the live site)</label>
+        </div>
+        <div style="display:flex; gap:12px;">
+          <button type="submit" class="btn" id="postBtn" style="width:auto; padding:13px 28px;">Save Post</button>
+          <button type="button" class="btn btn-outline" id="cancelEditBtn" style="display:none;">Cancel Edit</button>
+        </div>
+        <div class="msg" id="postMsg"></div>
+      </form>
+    </div>
+
+    <div class="panel">
+      <h2>All Posts</h2>
+      <div id="postList"><div class="empty-state">Loading...</div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const SUPABASE_URL = "https://ojwxqnffyksaofvoqiqb.supabase.co";
+  const SUPABASE_ANON_KEY = "PASTE_YOUR_SUPABASE_ANON_PUBLIC_KEY_HERE";
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  const loginScreen = document.getElementById('loginScreen');
+  const dashboard = document.getElementById('dashboard');
+  const loginForm = document.getElementById('loginForm');
+  const loginBtn = document.getElementById('loginBtn');
+  const loginMsg = document.getElementById('loginMsg');
+  const whoami = document.getElementById('whoami');
+
+  let editingId = null;
+
+  async function checkSession(){
+    const { data: { session } } = await sb.auth.getSession();
+    if(session){
+      showDashboard(session);
+    }else{
+      loginScreen.style.display = 'flex';
+      dashboard.style.display = 'none';
+    }
+  }
+
+  function showDashboard(session){
+    loginScreen.style.display = 'none';
+    dashboard.style.display = 'block';
+    whoami.textContent = `Logged in as ${session.user.email}`;
+    loadPosts();
+  }
+
+  loginForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    loginMsg.textContent = '';
+    loginMsg.className = 'msg';
+    loginBtn.disabled = true;
+    loginBtn.textContent = 'Logging in...';
+
+    const email = document.getElementById('loginEmail').value.trim();
+    const password = document.getElementById('loginPassword').value;
+
+    const { data, error } = await sb.auth.signInWithPassword({ email, password });
+
+    loginBtn.disabled = false;
+    loginBtn.textContent = 'Log In';
+
+    if(error){
+      loginMsg.textContent = 'Login failed. Check your email and password.';
+      loginMsg.className = 'msg error';
+      return;
+    }
+    showDashboard(data.session);
+  });
+
+  document.getElementById('logoutBtn').addEventListener('click', async () => {
+    await sb.auth.signOut();
+    checkSession();
+  });
+
+  function escapeHtml(str){
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  async function loadPosts(){
+    const postList = document.getElementById('postList');
+    const { data, error } = await sb
+      .from('posts')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if(error){
+      postList.innerHTML = '<div class="empty-state">Could not load posts.</div>';
+      return;
+    }
+    if(!data.length){
+      postList.innerHTML = '<div class="empty-state">No posts yet. Create your first one above.</div>';
+      return;
+    }
+
+    postList.innerHTML = data.map(post => `
+      <div class="post-row" data-id="${post.id}">
+        <div>
+          <div class="title">${escapeHtml(post.title)} ${post.published ? '<span class="status-pill live">Live</span>' : '<span class="status-pill">Draft</span>'}</div>
+          <div class="meta">/${escapeHtml(post.slug)} &middot; ${new Date(post.created_at).toLocaleDateString('en-GB', {day:'numeric', month:'short', year:'numeric'})}</div>
+        </div>
+        <div class="row-actions">
+          <button class="btn btn-outline edit-btn" data-id="${post.id}">Edit</button>
+          <button class="btn btn-danger delete-btn" data-id="${post.id}">Delete</button>
+        </div>
+      </div>
+    `).join('');
+
+    postList.querySelectorAll('.edit-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const post = data.find(p => p.id === btn.dataset.id);
+        loadPostIntoForm(post);
+      });
+    });
+    postList.querySelectorAll('.delete-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        if(!confirm('Delete this post permanently?')) return;
+        await sb.from('posts').delete().eq('id', btn.dataset.id);
+        loadPosts();
+      });
+    });
+  }
+
+  function loadPostIntoForm(post){
+    editingId = post.id;
+    document.getElementById('formTitle').textContent = 'Edit Post';
+    document.getElementById('pTitle').value = post.title;
+    document.getElementById('pSlug').value = post.slug;
+    document.getElementById('pExcerpt').value = post.excerpt || '';
+    document.getElementById('pContent').value = post.content;
+    document.getElementById('pCover').value = post.cover_image || '';
+    document.getElementById('pPublished').checked = post.published;
+    document.getElementById('cancelEditBtn').style.display = 'inline-block';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  document.getElementById('cancelEditBtn').addEventListener('click', () => {
+    editingId = null;
+    document.getElementById('postForm').reset();
+    document.getElementById('pPublished').checked = true;
+    document.getElementById('formTitle').textContent = 'New Post';
+    document.getElementById('cancelEditBtn').style.display = 'none';
+  });
+
+  document.getElementById('postForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const postBtn = document.getElementById('postBtn');
+    const postMsg = document.getElementById('postMsg');
+    postBtn.disabled = true;
+    postBtn.textContent = 'Saving...';
+    postMsg.textContent = '';
+    postMsg.className = 'msg';
+
+    const payload = {
+      title: document.getElementById('pTitle').value.trim(),
+      slug: document.getElementById('pSlug').value.trim(),
+      excerpt: document.getElementById('pExcerpt').value.trim(),
+      content: document.getElementById('pContent').value,
+      cover_image: document.getElementById('pCover').value.trim() || null,
+      published: document.getElementById('pPublished').checked
+    };
+
+    let error;
+    if(editingId){
+      ({ error } = await sb.from('posts').update(payload).eq('id', editingId));
+    }else{
+      ({ error } = await sb.from('posts').insert(payload));
+    }
+
+    postBtn.disabled = false;
+    postBtn.textContent = 'Save Post';
+
+    if(error){
+      postMsg.textContent = error.code === '23505' ? 'That slug is already used by another post.' : 'Something went wrong saving this post.';
+      postMsg.className = 'msg error';
+      return;
+    }
+
+    postMsg.textContent = 'Saved.';
+    document.getElementById('postForm').reset();
+    document.getElementById('pPublished').checked = true;
+    editingId = null;
+    document.getElementById('formTitle').textContent = 'New Post';
+    document.getElementById('cancelEditBtn').style.display = 'none';
+    loadPosts();
+  });
+
+  checkSession();
+</script>
+
+</body>
+</html>
