@@ -185,6 +185,26 @@
   </div>
 </div>
 
+<!-- SET PASSWORD (first-time invite acceptance) -->
+<div class="login-screen" id="setPasswordScreen" style="display:none;">
+  <div class="login-box">
+    <h1>Welcome to 50TEN</h1>
+    <div class="sub">You've been invited to post on the blog. Set a password to finish creating your account.</div>
+    <form id="setPasswordForm">
+      <div class="field">
+        <label for="newPassword">New password</label>
+        <input type="password" id="newPassword" required minlength="6">
+      </div>
+      <div class="field">
+        <label for="confirmPassword">Confirm password</label>
+        <input type="password" id="confirmPassword" required minlength="6">
+      </div>
+      <button type="submit" class="btn" id="setPasswordBtn">Set Password &amp; Continue</button>
+      <div class="msg" id="setPasswordMsg"></div>
+    </form>
+  </div>
+</div>
+
 <!-- DASHBOARD -->
 <div class="dashboard" id="dashboard">
   <div class="wrap">
@@ -244,30 +264,82 @@
   const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
   const loginScreen = document.getElementById('loginScreen');
+  const setPasswordScreen = document.getElementById('setPasswordScreen');
   const dashboard = document.getElementById('dashboard');
   const loginForm = document.getElementById('loginForm');
   const loginBtn = document.getElementById('loginBtn');
   const loginMsg = document.getElementById('loginMsg');
   const whoami = document.getElementById('whoami');
+  const setPasswordForm = document.getElementById('setPasswordForm');
+  const setPasswordBtn = document.getElementById('setPasswordBtn');
+  const setPasswordMsg = document.getElementById('setPasswordMsg');
 
   let editingId = null;
 
+  function isInviteOrRecoveryLink(){
+    const hash = window.location.hash;
+    return hash.includes('type=invite') || hash.includes('type=recovery') || hash.includes('type=signup');
+  }
+
   async function checkSession(){
     const { data: { session } } = await sb.auth.getSession();
+
+    if(session && isInviteOrRecoveryLink()){
+      // Just arrived from an invite or recovery link: force a password set before dashboard access
+      loginScreen.style.display = 'none';
+      dashboard.style.display = 'none';
+      setPasswordScreen.style.display = 'flex';
+      return;
+    }
+
     if(session){
       showDashboard(session);
     }else{
       loginScreen.style.display = 'flex';
+      setPasswordScreen.style.display = 'none';
       dashboard.style.display = 'none';
     }
   }
 
   function showDashboard(session){
     loginScreen.style.display = 'none';
+    setPasswordScreen.style.display = 'none';
     dashboard.style.display = 'block';
     whoami.textContent = `Logged in as ${session.user.email}`;
     loadPosts();
   }
+
+  setPasswordForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    setPasswordMsg.textContent = '';
+    setPasswordMsg.className = 'msg';
+
+    const pw1 = document.getElementById('newPassword').value;
+    const pw2 = document.getElementById('confirmPassword').value;
+
+    if(pw1 !== pw2){
+      setPasswordMsg.textContent = 'Passwords do not match.';
+      setPasswordMsg.className = 'msg error';
+      return;
+    }
+
+    setPasswordBtn.disabled = true;
+    setPasswordBtn.textContent = 'Saving...';
+
+    const { data, error } = await sb.auth.updateUser({ password: pw1 });
+
+    setPasswordBtn.disabled = false;
+    setPasswordBtn.textContent = 'Set Password & Continue';
+
+    if(error){
+      setPasswordMsg.textContent = 'Could not set password. Try again.';
+      setPasswordMsg.className = 'msg error';
+      return;
+    }
+
+    window.history.replaceState({}, '', window.location.pathname);
+    showDashboard(data.user ? { user: data.user } : (await sb.auth.getSession()).data.session);
+  });
 
   loginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
