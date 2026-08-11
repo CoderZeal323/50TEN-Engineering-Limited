@@ -1319,37 +1319,40 @@
   const reactionMap = { '👍': { btn: 'reactLike', count: 'countLike' }, '❤️': { btn: 'reactLove', count: 'countLove' }, '💡': { btn: 'reactInsight', count: 'countInsight' } };
 
   async function loadReactions(slug){
-    try{
-      const { data, error } = await sb.from('reactions').select('*').eq('post_slug', slug);
-      if(error) throw error;
-      Object.values(reactionMap).forEach(m => document.getElementById(m.count).textContent = '0');
-      (data || []).forEach(row => {
-        const m = reactionMap[row.emoji];
-        if(m) document.getElementById(m.count).textContent = row.count;
-      });
-    }catch(e){ /* fail quietly */ }
-    Object.entries(reactionMap).forEach(([emoji, m]) => {
-      const reacted = localStorage.getItem(`reacted:${slug}:${emoji}`) === '1';
-      document.getElementById(m.btn).classList.toggle('active', reacted);
+  try{
+    const { data, error } = await sb.from('reactions').select('*').eq('post_slug', slug);
+    if(error) throw error;
+    Object.values(reactionMap).forEach(m => document.getElementById(m.count).textContent = '0');
+    (data || []).forEach(row => {
+      const m = reactionMap[row.emoji];
+      if(m) document.getElementById(m.count).textContent = row.count;
     });
-  }
-
-  async function toggleReaction(emoji){
-    if(!currentSlug) return;
-    const key = `reacted:${currentSlug}:${emoji}`;
-    const already = localStorage.getItem(key) === '1';
-    const delta = already ? -1 : 1;
-    try{
-      const { error } = await sb.rpc('increment_reaction', { p_slug: currentSlug, p_emoji: emoji, p_delta: delta });
-      if(error) throw error;
-      if(already){ localStorage.removeItem(key); } else { localStorage.setItem(key, '1'); }
-      loadReactions(currentSlug);
-    }catch(e){ /* fail quietly */ }
-  }
-
+  }catch(e){ /* fail quietly */ }
+  const current = localStorage.getItem(`reacted:${slug}`);
   Object.entries(reactionMap).forEach(([emoji, m]) => {
-    document.getElementById(m.btn).addEventListener('click', () => toggleReaction(emoji));
+    document.getElementById(m.btn).classList.toggle('active', emoji === current);
   });
+}
+
+async function toggleReaction(emoji){
+  if(!currentSlug) return;
+  const key = `reacted:${currentSlug}`;
+  const current = localStorage.getItem(key);
+
+  try{
+    if(current === emoji){
+      await sb.rpc('increment_reaction', { p_slug: currentSlug, p_emoji: emoji, p_delta: -1 });
+      localStorage.removeItem(key);
+    }else{
+      if(current){
+        await sb.rpc('increment_reaction', { p_slug: currentSlug, p_emoji: current, p_delta: -1 });
+      }
+      await sb.rpc('increment_reaction', { p_slug: currentSlug, p_emoji: emoji, p_delta: 1 });
+      localStorage.setItem(key, emoji);
+    }
+    loadReactions(currentSlug);
+  }catch(e){ /* fail quietly */ }
+}
 
   async function loadComments(slug){
     const commentList = document.getElementById('commentList');
@@ -1374,7 +1377,7 @@
     }
   }
 
-  document.getElementById('commentForm').addEventListener('submit', async (e) => {
+ document.getElementById('commentForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     if(!currentSlug) return;
     const commentMsg = document.getElementById('commentMsg');
@@ -1390,6 +1393,7 @@
     try{
       const { error } = await sb.from('comments').insert({ post_slug: currentSlug, name, text });
       if(error) throw error;
+      localStorage.setItem('commenterName', name);
       document.getElementById('commentForm').reset();
       loadComments(currentSlug);
     }catch(e){
@@ -1467,6 +1471,8 @@
     loadReactions(post.slug);
     loadComments(post.slug);
     document.getElementById('commentForm').reset();
+const savedName = localStorage.getItem('commenterName');
+if(savedName) document.getElementById('commentName').value = savedName;
     document.getElementById('commentMsg').textContent = '';
 
     document.getElementById('shareLinkedin').href = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(postUrl)}`;
