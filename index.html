@@ -754,6 +754,7 @@
     margin-top:28px;
     padding-top:24px;
     border-top:1px solid var(--line);
+    flex-wrap:wrap;
   }
   .share-label{color:var(--steel-dim); font-size:0.82rem; text-transform:uppercase; letter-spacing:0.06em;}
   .share-btn{
@@ -764,9 +765,11 @@
     color:var(--white);
     border-radius:var(--radius);
     transition:border-color 0.2s, color 0.2s;
+    background:none;
+    cursor:pointer;
+    font-family:'Inter', sans-serif;
   }
   .share-btn:hover{border-color:var(--orange-bright); color:var(--orange-bright);}
-
   /* ============ NEWSLETTER ============ */
   .newsletter{
     background:var(--card);
@@ -1079,11 +1082,14 @@
     <div class="date" id="postModalDate"></div>
     <h2 id="postModalTitle"></h2>
     <div class="content" id="postModalContent"></div>
-    <div class="share-row">
-      <span class="share-label">Share:</span>
-      <a id="shareLinkedin" href="#" target="_blank" rel="noopener" class="share-btn">LinkedIn</a>
-      <a id="shareFacebook" href="#" target="_blank" rel="noopener" class="share-btn">Facebook</a>
-    </div>
+<div class="share-row">
+  <span class="share-label">Share:</span>
+  <a id="shareLinkedin" href="#" target="_blank" rel="noopener" class="share-btn">LinkedIn</a>
+  <a id="shareFacebook" href="#" target="_blank" rel="noopener" class="share-btn">Facebook</a>
+  <a id="shareWhatsapp" href="#" target="_blank" rel="noopener" class="share-btn">WhatsApp</a>
+  <button type="button" id="shareInstagram" class="share-btn">Instagram</button>
+  <button type="button" id="shareMore" class="share-btn" style="display:none;">More</button>
+</div>
   </div>
 </div>
 
@@ -1270,18 +1276,72 @@
     }
   }
 
+  let currentShareUrl = '';
+  let currentShareText = '';
+
   function openPost(post){
     postModalDate.textContent = formatDate(post.created_at);
     postModalTitle.textContent = post.title;
     postModalContent.textContent = post.content;
 
     const postUrl = `${window.location.origin}${window.location.pathname}?post=${encodeURIComponent(post.slug)}`;
-    const shareText = encodeURIComponent(post.title);
+    const shareText = post.title;
+
+    currentShareUrl = postUrl;
+    currentShareText = shareText;
+
     document.getElementById('shareLinkedin').href = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(postUrl)}`;
     document.getElementById('shareFacebook').href = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(postUrl)}`;
+    document.getElementById('shareWhatsapp').href = `https://wa.me/?text=${encodeURIComponent(shareText + ' ' + postUrl)}`;
 
     window.history.replaceState({}, '', postUrl);
     postModal.classList.add('open');
+  }
+
+  // Instagram has no public "share by link" endpoint, so the best we can do
+  // from a website is copy the link (for pasting into a bio/story/DM) and,
+  // on mobile, try to jump straight into the Instagram app.
+  const shareInstagramBtn = document.getElementById('shareInstagram');
+  shareInstagramBtn.addEventListener('click', async () => {
+    if(!currentShareUrl) return;
+    const originalLabel = shareInstagramBtn.textContent;
+
+    try{
+      await navigator.clipboard.writeText(currentShareUrl);
+      shareInstagramBtn.textContent = 'Link Copied!';
+    }catch(e){
+      shareInstagramBtn.textContent = 'Copy failed';
+    }
+
+    setTimeout(() => { shareInstagramBtn.textContent = originalLabel; }, 2500);
+
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    if(isMobile){
+      window.location.href = 'instagram://app';
+      setTimeout(() => {
+        window.open('https://www.instagram.com/', '_blank');
+      }, 700);
+    }
+  });
+
+  // On devices/browsers that support the native Web Share API (most mobile
+  // browsers), show a "More" button that opens the phone's own share sheet
+  // -- this covers Instagram Direct, Messages, Telegram, etc. in one go.
+  if(navigator.share){
+    const shareMoreBtn = document.getElementById('shareMore');
+    shareMoreBtn.style.display = 'inline-block';
+    shareMoreBtn.addEventListener('click', async () => {
+      if(!currentShareUrl) return;
+      try{
+        await navigator.share({
+          title: currentShareText,
+          text: currentShareText,
+          url: currentShareUrl
+        });
+      }catch(e){
+        // user cancelled the share sheet, nothing to do
+      }
+    });
   }
 
   postModalClose.addEventListener('click', () => {
