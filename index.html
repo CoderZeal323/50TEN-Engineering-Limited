@@ -770,6 +770,79 @@
     font-family:'Inter', sans-serif;
   }
   .share-btn:hover{border-color:var(--orange-bright); color:var(--orange-bright);}
+  .reactions-row{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin-top:20px;
+    flex-wrap:wrap;
+  }
+  .reaction-btn{
+    border:1px solid var(--line);
+    background:none;
+    color:var(--white);
+    padding:8px 14px;
+    border-radius:100px;
+    font-size:0.9rem;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    gap:6px;
+    transition:border-color 0.2s, background 0.2s;
+  }
+  .reaction-btn:hover{border-color:var(--orange-bright);}
+  .reaction-btn.active{
+    border-color:var(--orange-bright);
+    background:rgba(242,121,10,0.12);
+    color:var(--orange-bright);
+  }
+  .reaction-count{font-family:'JetBrains Mono', monospace; font-size:0.82rem;}
+
+  .comments-section{
+    margin-top:32px;
+    padding-top:24px;
+    border-top:1px solid var(--line);
+  }
+  .comments-section h4{font-size:1rem; margin-bottom:16px;}
+  .comment-form{display:grid; gap:10px; margin-bottom:24px;}
+  .comment-form input, .comment-form textarea{
+    width:100%;
+    background:var(--bg);
+    border:1px solid var(--line);
+    color:var(--white);
+    padding:11px 14px;
+    font-family:'Inter', sans-serif;
+    font-size:0.9rem;
+    border-radius:var(--radius);
+    resize:vertical;
+  }
+  .comment-form input:focus, .comment-form textarea:focus{outline:none; border-color:var(--orange);}
+  .comment-submit{
+    background:linear-gradient(100deg, var(--orange), var(--red));
+    color:var(--white);
+    border:none;
+    padding:11px 24px;
+    font-weight:600;
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+    font-size:0.8rem;
+    border-radius:var(--radius);
+    cursor:pointer;
+    width:fit-content;
+  }
+  .comment-submit:disabled{opacity:0.5; cursor:not-allowed;}
+  .comment-msg{font-size:0.82rem; color:var(--orange-bright);}
+  .comment-list{display:grid; gap:14px;}
+  .comment-item{
+    background:var(--card);
+    border:1px solid var(--line);
+    padding:14px 16px;
+    border-radius:var(--radius);
+  }
+  .comment-item .top{display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;}
+  .comment-item .name{font-weight:600; font-size:0.88rem;}
+  .comment-item .date{color:var(--steel-dim); font-size:0.72rem; font-family:'JetBrains Mono', monospace;}
+  .comment-item .text{color:var(--steel); font-size:0.88rem;}
   /* ============ NEWSLETTER ============ */
   .newsletter{
     background:var(--card);
@@ -1090,6 +1163,22 @@
   <button type="button" id="shareInstagram" class="share-btn">Instagram</button>
   <button type="button" id="shareMore" class="share-btn" style="display:none;">More</button>
 </div>
+<div class="reactions-row" id="reactionsRow">
+  <button type="button" class="reaction-btn" data-emoji="👍" id="reactLike"><span>👍</span><span class="reaction-count" id="countLike">0</span></button>
+  <button type="button" class="reaction-btn" data-emoji="❤️" id="reactLove"><span>❤️</span><span class="reaction-count" id="countLove">0</span></button>
+  <button type="button" class="reaction-btn" data-emoji="💡" id="reactInsight"><span>💡</span><span class="reaction-count" id="countInsight">0</span></button>
+</div>
+
+<div class="comments-section">
+  <h4>Comments</h4>
+  <form class="comment-form" id="commentForm">
+    <input type="text" id="commentName" placeholder="Your name" required>
+    <textarea id="commentText" rows="3" placeholder="Add a comment..." required></textarea>
+    <button type="submit" class="comment-submit" id="commentSubmitBtn">Post Comment</button>
+    <div class="comment-msg" id="commentMsg"></div>
+  </form>
+  <div class="comment-list" id="commentList"><div class="empty-state">Loading comments…</div></div>
+</div>
   </div>
 </div>
 
@@ -1226,6 +1315,90 @@
   const postModalDate = document.getElementById('postModalDate');
   const postModalTitle = document.getElementById('postModalTitle');
   const postModalContent = document.getElementById('postModalContent');
+  let currentSlug = '';
+  const reactionMap = { '👍': { btn: 'reactLike', count: 'countLike' }, '❤️': { btn: 'reactLove', count: 'countLove' }, '💡': { btn: 'reactInsight', count: 'countInsight' } };
+
+  async function loadReactions(slug){
+    try{
+      const { data, error } = await sb.from('reactions').select('*').eq('post_slug', slug);
+      if(error) throw error;
+      Object.values(reactionMap).forEach(m => document.getElementById(m.count).textContent = '0');
+      (data || []).forEach(row => {
+        const m = reactionMap[row.emoji];
+        if(m) document.getElementById(m.count).textContent = row.count;
+      });
+    }catch(e){ /* fail quietly */ }
+    Object.entries(reactionMap).forEach(([emoji, m]) => {
+      const reacted = localStorage.getItem(`reacted:${slug}:${emoji}`) === '1';
+      document.getElementById(m.btn).classList.toggle('active', reacted);
+    });
+  }
+
+  async function toggleReaction(emoji){
+    if(!currentSlug) return;
+    const key = `reacted:${currentSlug}:${emoji}`;
+    const already = localStorage.getItem(key) === '1';
+    const delta = already ? -1 : 1;
+    try{
+      const { error } = await sb.rpc('increment_reaction', { p_slug: currentSlug, p_emoji: emoji, p_delta: delta });
+      if(error) throw error;
+      if(already){ localStorage.removeItem(key); } else { localStorage.setItem(key, '1'); }
+      loadReactions(currentSlug);
+    }catch(e){ /* fail quietly */ }
+  }
+
+  Object.entries(reactionMap).forEach(([emoji, m]) => {
+    document.getElementById(m.btn).addEventListener('click', () => toggleReaction(emoji));
+  });
+
+  async function loadComments(slug){
+    const commentList = document.getElementById('commentList');
+    try{
+      const { data, error } = await sb.from('comments').select('*').eq('post_slug', slug).order('created_at', { ascending: false });
+      if(error) throw error;
+      if(!data || !data.length){
+        commentList.innerHTML = '<div class="empty-state">No comments yet. Be the first to comment.</div>';
+        return;
+      }
+      commentList.innerHTML = data.map(c => `
+        <div class="comment-item">
+          <div class="top">
+            <span class="name">${escapeHtml(c.name)}</span>
+            <span class="date">${new Date(c.created_at).toLocaleDateString('en-GB', {day:'numeric', month:'short', year:'numeric'})}</span>
+          </div>
+          <div class="text">${escapeHtml(c.text)}</div>
+        </div>
+      `).join('');
+    }catch(e){
+      commentList.innerHTML = '<div class="empty-state">Could not load comments right now.</div>';
+    }
+  }
+
+  document.getElementById('commentForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if(!currentSlug) return;
+    const commentMsg = document.getElementById('commentMsg');
+    const commentSubmitBtn = document.getElementById('commentSubmitBtn');
+    const name = document.getElementById('commentName').value.trim();
+    const text = document.getElementById('commentText').value.trim();
+    if(!name || !text) return;
+
+    commentSubmitBtn.disabled = true;
+    commentSubmitBtn.textContent = 'Posting...';
+    commentMsg.textContent = '';
+
+    try{
+      const { error } = await sb.from('comments').insert({ post_slug: currentSlug, name, text });
+      if(error) throw error;
+      document.getElementById('commentForm').reset();
+      loadComments(currentSlug);
+    }catch(e){
+      commentMsg.textContent = 'Something went wrong posting your comment. Please try again.';
+    }finally{
+      commentSubmitBtn.disabled = false;
+      commentSubmitBtn.textContent = 'Post Comment';
+    }
+  });
 
   function formatDate(iso){
     return new Date(iso).toLocaleDateString('en-GB', {day:'numeric', month:'short', year:'numeric'});
@@ -1289,6 +1462,12 @@
 
     currentShareUrl = postUrl;
     currentShareText = shareText;
+
+    currentSlug = post.slug;
+    loadReactions(post.slug);
+    loadComments(post.slug);
+    document.getElementById('commentForm').reset();
+    document.getElementById('commentMsg').textContent = '';
 
     document.getElementById('shareLinkedin').href = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(postUrl)}`;
     document.getElementById('shareFacebook').href = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(postUrl)}`;
@@ -1432,12 +1611,11 @@
       reviewCount.textContent = 'No ratings yet';
       return;
     }
-    reviews.sort((a,b) => b.ts - a.ts);
     reviewList.innerHTML = reviews.map(r => `
       <div class="review-item">
         <div class="top">
           <span class="name">${escapeHtml(r.name)}</span>
-          <span class="date">${new Date(r.ts).toLocaleDateString('en-GB', {day:'numeric', month:'short', year:'numeric'})}</span>
+          <span class="date">${new Date(r.created_at).toLocaleDateString('en-GB', {day:'numeric', month:'short', year:'numeric'})}</span>
         </div>
         <div class="stars">${starString(r.rating)}</div>
         <div class="text">${escapeHtml(r.text)}</div>
@@ -1456,25 +1634,16 @@
     return div.innerHTML;
   }
 
-  async function loadReviews(){
+ async function loadReviews(){
     try{
-      const listResult = await window.storage.list('review:', true);
-      const keys = (listResult && listResult.keys) ? listResult.keys : [];
-      if(!keys.length){ renderReviews([]); return; }
-      const reviews = [];
-      for(const key of keys){
-        try{
-          const res = await window.storage.get(key, true);
-          if(res && res.value){ reviews.push(JSON.parse(res.value)); }
-        }catch(e){ /* skip unreadable entry */ }
-      }
-      renderReviews(reviews);
+      const { data, error } = await sb.from('reviews').select('*').order('created_at', { ascending: false });
+      if(error) throw error;
+      renderReviews(data || []);
     }catch(e){
       reviewList.innerHTML = '<div class="empty-state">Couldn\'t load reviews right now. Please refresh.</div>';
     }
   }
-
-  reviewForm.addEventListener('submit', async (e) => {
+reviewForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     formMsg.textContent = '';
 
@@ -1507,7 +1676,6 @@
       submitBtn.textContent = 'Submit Review';
     }
   });
-
   loadReviews();
 </script>
 
