@@ -1676,9 +1676,10 @@ reviewForm.addEventListener('submit', async (e) => {
 }catch(err){
   formMsg.textContent = 'Something went wrong submitting your review. Please try again.';
 }finally{
-  submitBtn.disabled = false;
-  submitBtn.textContent = 'Submit Review';
-};
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Submit Review';
+    }
+  });
   loadReviews();
 </script>
 
