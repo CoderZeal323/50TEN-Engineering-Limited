@@ -1665,23 +1665,20 @@ reviewForm.addEventListener('submit', async (e) => {
     submitBtn.disabled = true;
     submitBtn.textContent = 'Submitting…';
 
-    const entry = { name, text, rating: selectedRating, ts: Date.now() };
-    const key = `review:${entry.ts}_${Math.random().toString(36).slice(2,8)}`;
-
     try{
-      await window.storage.set(key, JSON.stringify(entry), true);
-      formMsg.textContent = 'Thanks, your review has been posted.';
-      reviewForm.reset();
-      selectedRating = 0;
-      stars.forEach(s => s.classList.remove('active'));
-      loadReviews();
-    }catch(err){
-      formMsg.textContent = 'Something went wrong submitting your review. Please try again.';
-    }finally{
-      submitBtn.disabled = false;
-      submitBtn.textContent = 'Submit Review';
-    }
-  });
+  const { error } = await sb.from('reviews').insert({ name, text, rating: selectedRating });
+  if(error) throw error;
+  formMsg.textContent = 'Thanks, your review has been posted.';
+  reviewForm.reset();
+  selectedRating = 0;
+  stars.forEach(s => s.classList.remove('active'));
+  loadReviews();
+}catch(err){
+  formMsg.textContent = 'Something went wrong submitting your review. Please try again.';
+}finally{
+  submitBtn.disabled = false;
+  submitBtn.textContent = 'Submit Review';
+};
   loadReviews();
 </script>
 
